@@ -4,8 +4,6 @@ import { useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { format } from "date-fns";
 
-const supabase = createClient();
-
 export interface DailyLog {
   date: string;        // YYYY-MM-DD
   totalSeconds: number;
@@ -18,6 +16,7 @@ export function useTimeLogs() {
 
   const fetchRecentLogs = useCallback(async (cardId: string, limit = 7) => {
     setLoading(true);
+    const supabase = createClient();
     const { data } = await supabase
       .from("time_logs")
       .select("logged_date, duration_seconds")
@@ -40,6 +39,7 @@ export function useTimeLogs() {
 
   const fetchAllLogs = useCallback(async (cardId: string) => {
     setLoading(true);
+    const supabase = createClient();
     const { data } = await supabase
       .from("time_logs")
       .select("logged_date, duration_seconds")
@@ -61,6 +61,7 @@ export function useTimeLogs() {
 
   const createTimeLog = useCallback(
     async (cardId: string, startedAt: string, endedAt: string, durationSeconds: number) => {
+      const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 

@@ -5,14 +5,13 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { getToday } from "@/lib/utils/date";
 
-const supabase = createClient();
-
 export function usePageView() {
   const { user } = useAuth();
 
   useEffect(() => {
     if (!user) return;
 
+    const supabase = createClient();
     const today = getToday();
 
     supabase

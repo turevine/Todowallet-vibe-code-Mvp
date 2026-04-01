@@ -10,8 +10,6 @@ import { getDaysInMonth, getDay } from "date-fns";
 import { motion } from "framer-motion";
 import type { ProjectCardWithStats } from "@/types";
 
-const supabase = createClient();
-
 /* ── 색상 단계 ── */
 const BRAND = "#6366F1";
 
@@ -115,6 +113,7 @@ export default function HeatmapCalendar({ cards, initialCardId }: HeatmapCalenda
   // 1) 전체 히트맵 데이터 로드
   useEffect(() => {
     async function load() {
+      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
@@ -182,6 +181,7 @@ export default function HeatmapCalendar({ cards, initialCardId }: HeatmapCalenda
       return;
     }
     async function loadBreakdown() {
+      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 

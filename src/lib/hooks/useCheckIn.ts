@@ -5,7 +5,6 @@ import type { TimerState, TimerSession } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 
 const STORAGE_KEY = "todowallet_timer_session";
-const supabase = createClient();
 
 type SessionMap = Record<string, TimerSession>;
 
@@ -51,6 +50,7 @@ function removeSession(cardId: string) {
 }
 
 async function syncRemoteSession(session: TimerSession) {
+  const supabase = createClient();
   const { data: { session: authSession } } = await supabase.auth.getSession();
   if (!authSession?.user) return;
 
@@ -71,6 +71,7 @@ async function syncRemoteSession(session: TimerSession) {
 }
 
 async function removeRemoteSession(cardId: string) {
+  const supabase = createClient();
   const { error } = await supabase.from("active_timer_sessions").delete().eq("card_id", cardId);
   if (error) {
     console.error("[useCheckIn] removeRemoteSession failed:", error.message);
@@ -87,6 +88,7 @@ interface RemoteSessionRow {
 }
 
 async function loadRemoteSession(cardId: string): Promise<TimerSession | null> {
+  const supabase = createClient();
   const { data: { session: authSession } } = await supabase.auth.getSession();
   if (!authSession?.user) return null;
 

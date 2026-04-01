@@ -11,8 +11,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CircleRowSkeleton } from "@/components/ui/Skeleton";
 import type { ProjectCardWithStats, HeatmapDay } from "@/types";
 
-const supabase = createClient();
-
 function getOpacity(seconds: number): number {
   if (seconds === 0) return 0.15;
   if (seconds <= 3600) return 0.4;
@@ -50,6 +48,7 @@ export default function HeatmapBanner({ cards }: HeatmapBannerProps) {
     if (cards.length === 0) return;
 
     async function loadAll() {
+      const supabase = createClient();
       const { start, end } = getMonthRange(year, month);
 
       const resultPromises = cards.map(async (card) => {
@@ -90,6 +89,7 @@ export default function HeatmapBanner({ cards }: HeatmapBannerProps) {
 
   useEffect(() => {
     async function loadPreference() {
+      const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
       const uid = session?.user?.id ?? null;
       setUserId(uid);
@@ -130,6 +130,7 @@ export default function HeatmapBanner({ cards }: HeatmapBannerProps) {
 
   const persistLockPreference = useCallback(async (nextLocked: boolean, nextCardId: string | null) => {
     if (!userId) return;
+    const supabase = createClient();
     await supabase.from("user_banner_preferences").upsert(
       {
         user_id: userId,

@@ -6,7 +6,6 @@ import { calculateDDay, calculateElapsedDays } from "@/lib/utils/date";
 import { formatTotalTime } from "@/lib/utils/format";
 import type { ProjectCard, ProjectCardWithStats } from "@/types";
 
-const supabase = createClient();
 const TIMER_STORAGE_KEY = "todowallet_timer_session";
 
 interface LiveTimerSession {
@@ -49,6 +48,7 @@ function parseRows(data: Record<string, unknown>[]): ProjectCardWithStats[] {
 }
 
 async function getUserId(): Promise<string | null> {
+  const supabase = createClient();
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error || !session?.user) {
     console.error("[useCards] getUserId failed:", error?.message ?? "no session");
@@ -106,6 +106,7 @@ export function useCards() {
       return;
     }
 
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("active_timer_sessions")
       .select("card_id, started_at, elapsed_before_pause, last_resumed_at, updated_at, state")
@@ -139,6 +140,7 @@ export function useCards() {
   const fetchActiveCards = useCallback(async () => {
     const userId = await getUserId();
     if (!userId) return;
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("project_cards")
       .select("*, time_logs(duration_seconds)")
@@ -157,6 +159,7 @@ export function useCards() {
   const fetchCompletedCards = useCallback(async () => {
     const userId = await getUserId();
     if (!userId) return;
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("project_cards")
       .select("*, time_logs(duration_seconds)")
@@ -251,6 +254,7 @@ export function useCards() {
       const userId = await getUserId();
       if (!userId) return false;
 
+      const supabase = createClient();
       const { data: rows } = await supabase
         .from("project_cards")
         .select("display_order")
@@ -285,6 +289,7 @@ export function useCards() {
 
   const updateCard = useCallback(
     async (id: string, updates: Partial<Pick<ProjectCard, "title" | "deadline" | "design_preset">>) => {
+      const supabase = createClient();
       const { error } = await supabase
         .from("project_cards")
         .update({ ...updates, updated_at: new Date().toISOString() })
@@ -296,6 +301,7 @@ export function useCards() {
 
   const updateCardOrder = useCallback(
     async (cards: { id: string; display_order: number }[]) => {
+      const supabase = createClient();
       const promises = cards.map((c) =>
         supabase
           .from("project_cards")
@@ -310,6 +316,7 @@ export function useCards() {
 
   const completeCard = useCallback(
     async (id: string) => {
+      const supabase = createClient();
       const { error } = await supabase
         .from("project_cards")
         .update({ is_completed: true, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -321,6 +328,7 @@ export function useCards() {
 
   const uncompleteCard = useCallback(
     async (id: string) => {
+      const supabase = createClient();
       const { error } = await supabase
         .from("project_cards")
         .update({ is_completed: false, completed_at: null, updated_at: new Date().toISOString() })
@@ -332,6 +340,7 @@ export function useCards() {
 
   const softDeleteCard = useCallback(
     async (id: string) => {
+      const supabase = createClient();
       const { error } = await supabase
         .from("project_cards")
         .update({ is_deleted: true, deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() })
@@ -343,6 +352,7 @@ export function useCards() {
 
   const hardDeleteCard = useCallback(
     async (id: string) => {
+      const supabase = createClient();
       await supabase.from("time_logs").delete().eq("card_id", id);
       const { error } = await supabase.from("project_cards").delete().eq("id", id);
       if (!error) await refresh();
@@ -352,6 +362,7 @@ export function useCards() {
 
   const restoreCard = useCallback(
     async (id: string) => {
+      const supabase = createClient();
       const { error } = await supabase
         .from("project_cards")
         .update({ is_deleted: false, deleted_at: null, updated_at: new Date().toISOString() })
@@ -364,6 +375,7 @@ export function useCards() {
   const fetchDeletedCards = useCallback(async () => {
     const userId = await getUserId();
     if (!userId) return [];
+    const supabase = createClient();
     const { data } = await supabase
       .from("project_cards")
       .select("*, time_logs(duration_seconds)")

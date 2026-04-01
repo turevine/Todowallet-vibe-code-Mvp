@@ -7,8 +7,6 @@ import { getMonthRange } from "@/lib/utils/date";
 import { getDaysInMonth } from "date-fns";
 import type { HeatmapDay } from "@/types";
 
-const supabase = createClient();
-
 interface MiniHeatmapProps {
   cardId: string;
   designPreset: string;
@@ -33,6 +31,7 @@ export default function MiniHeatmap({
   const preset = getPreset(designPreset);
 
   useEffect(() => {
+    const supabase = createClient();
     const { start, end } = getMonthRange(currentMonth.year, currentMonth.month);
     const totalDays = getDaysInMonth(new Date(currentMonth.year, currentMonth.month - 1));
 

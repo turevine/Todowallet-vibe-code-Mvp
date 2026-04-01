@@ -18,8 +18,6 @@ import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import type { ProjectCard as ProjectCardRow, ProjectCardWithStats } from "@/types";
 
-const supabase = createClient();
-
 function CardDetailContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -41,6 +39,7 @@ function CardDetailContent() {
   const { timerState } = useCheckIn(id);
 
   const fetchCard = useCallback(async () => {
+    const supabase = createClient();
     const { data } = await supabase
       .from("project_cards")
       .select("*, time_logs(duration_seconds)")
