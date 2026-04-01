@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useCheckIn } from "@/lib/hooks/useCheckIn";
 import { useTimeLogs } from "@/lib/hooks/useTimeLogs";
 import { useToast } from "@/lib/hooks/useToast";
@@ -9,6 +10,7 @@ interface CheckInTimerProps {
   isCompleted: boolean;
   onTimeLogCreated: () => void;
   onComplete: () => void;
+  onTimerStateChange?: (state: "idle" | "running" | "paused") => void;
 }
 
 export default function CheckInTimer({
@@ -16,6 +18,7 @@ export default function CheckInTimer({
   isCompleted,
   onTimeLogCreated,
   onComplete,
+  onTimerStateChange,
 }: CheckInTimerProps) {
   const {
     timerState,
@@ -24,6 +27,10 @@ export default function CheckInTimer({
     resume,
     checkOut,
   } = useCheckIn(cardId);
+
+  useEffect(() => {
+    onTimerStateChange?.(timerState);
+  }, [timerState, onTimerStateChange]);
 
   const { createTimeLog } = useTimeLogs();
   const { showToast } = useToast();

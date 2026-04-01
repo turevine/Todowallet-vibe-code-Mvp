@@ -28,6 +28,16 @@ interface RemoteLiveTimerRow {
   state: "running" | "paused";
 }
 
+/** 세션이 이 시간(초) 이상 동기화 없이 running이면 고스트로 판단 */
+const STALE_THRESHOLD_SECONDS = 3 * 60 * 60; // 3시간
+
+function isStaleTimerSession(session: LiveTimerSession, now: number): boolean {
+  if (session.state !== "running") return false;
+  const lastTs = new Date(session.lastSyncedAt ?? session.lastResumedAt ?? session.startedAt).getTime();
+  if (Number.isNaN(lastTs) || lastTs === 0) return true;
+  return (now - lastTs) / 1000 > STALE_THRESHOLD_SECONDS;
+}
+
 function enrichCard(card: ProjectCard & { total_seconds: number }): ProjectCardWithStats {
   return {
     ...card,
@@ -221,6 +231,14 @@ export function useCards() {
       const localTs = new Date(localSession.lastSyncedAt ?? localSession.lastResumedAt ?? localSession.startedAt).getTime();
       const remoteTs = new Date(remoteSession.lastSyncedAt ?? remoteSession.lastResumedAt ?? remoteSession.startedAt).getTime();
       mergedLiveSessions[cardId] = localTs >= remoteTs ? localSession : remoteSession;
+    }
+
+    // 고스트 세션 필터링: 너무 오래된 running 세션은 무시
+    const now = Date.now();
+    for (const [cardId, session] of Object.entries(mergedLiveSessions)) {
+      if (isStaleTimerSession(session, now)) {
+        delete mergedLiveSessions[cardId];
+      }
     }
 
     if (Object.keys(mergedLiveSessions).length === 0) return activeCards;

@@ -10,7 +10,7 @@ import CardStack from "@/components/CardStack";
 import CompletedSection from "@/components/CompletedSection";
 import HeatmapBanner from "@/components/HeatmapBanner";
 import ConfirmModal from "@/components/ConfirmModal";
-import { CardSkeleton, CircleRowSkeleton } from "@/components/ui/Skeleton";
+import { HomeSkeleton } from "@/components/ui/Skeleton";
 import { useCards } from "@/lib/hooks/useCards";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { usePageView } from "@/lib/hooks/usePageView";
@@ -297,14 +297,7 @@ function HomeContent() {
   usePageView();
 
   if (loading) {
-    return (
-      <div className="min-h-screen px-5 pt-20">
-        <div className="mb-4"><CardSkeleton /></div>
-        <div className="rounded-2xl p-4 border border-gray-100">
-          <CircleRowSkeleton count={20} />
-        </div>
-      </div>
-    );
+    return <HomeSkeleton />;
   }
 
   return (

@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 
 const STORAGE_KEY = "todowallet_timer_session";
 
+/** 세션이 이 시간(초) 이상 동기화 없이 running이면 고스트로 판단 */
+const STALE_THRESHOLD_SECONDS = 3 * 60 * 60; // 3시간
+
 type SessionMap = Record<string, TimerSession>;
 
 function loadSessionMap(): SessionMap {
@@ -70,12 +73,14 @@ async function syncRemoteSession(session: TimerSession) {
   }
 }
 
-async function removeRemoteSession(cardId: string) {
+async function removeRemoteSession(cardId: string): Promise<boolean> {
   const supabase = createClient();
   const { error } = await supabase.from("active_timer_sessions").delete().eq("card_id", cardId);
   if (error) {
     console.error("[useCheckIn] removeRemoteSession failed:", error.message);
+    return false;
   }
+  return true;
 }
 
 interface RemoteSessionRow {
@@ -118,6 +123,15 @@ function sessionTimestamp(session: TimerSession | null): number {
   return Number.isNaN(ms) ? 0 : ms;
 }
 
+/** running 세션이 오래 방치되었는지 판단 */
+function isStaleSession(session: TimerSession): boolean {
+  if (session.state !== "running") return false;
+  const lastTs = sessionTimestamp(session);
+  if (lastTs === 0) return true;
+  const gapSeconds = (Date.now() - lastTs) / 1000;
+  return gapSeconds > STALE_THRESHOLD_SECONDS;
+}
+
 export function useCheckIn(cardId: string) {
   const [timerState, setTimerState] = useState<TimerState>("idle");
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -127,6 +141,8 @@ export function useCheckIn(cardId: string) {
   const startedAtTimestampRef = useRef(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const saveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerStateRef = useRef<TimerState>("idle");
+  const startedAtISORef = useRef<string | null>(null);
 
   // 현재 경과시간 계산 (정확)
   const computeElapsed = useCallback(() => {
@@ -152,22 +168,26 @@ export function useCheckIn(cardId: string) {
   // localStorage 자동저장 시작/중지
   const lastResumedAtRef = useRef<string | undefined>(undefined);
 
+  const buildCurrentSession = useCallback((): TimerSession => {
+    const nowISO = new Date().toISOString();
+    return {
+      cardId,
+      startedAt: startedAtISORef.current ?? nowISO,
+      elapsedBeforePause: computeElapsed(),
+      lastResumedAt: lastResumedAtRef.current,
+      lastSyncedAt: nowISO,
+      state: timerStateRef.current === "running" ? "running" : "paused",
+    };
+  }, [cardId, computeElapsed]);
+
   const startAutoSave = useCallback(() => {
     if (saveIntervalRef.current) clearInterval(saveIntervalRef.current);
     saveIntervalRef.current = setInterval(() => {
-      const nowISO = new Date().toISOString();
-      const session: TimerSession = {
-        cardId,
-        startedAt: startedAt ?? new Date().toISOString(),
-        elapsedBeforePause: computeElapsed(),
-        lastResumedAt: lastResumedAtRef.current,
-        lastSyncedAt: nowISO,
-        state: timerState === "running" ? "running" : "paused",
-      };
+      const session = buildCurrentSession();
       saveSession(session);
       void syncRemoteSession(session);
     }, 30000);
-  }, [cardId, startedAt, timerState, computeElapsed]);
+  }, [buildCurrentSession]);
 
   const stopAutoSave = useCallback(() => {
     if (saveIntervalRef.current) {
@@ -187,6 +207,31 @@ export function useCheckIn(cardId: string) {
       const nowISO = new Date(now).toISOString();
 
       if (session.state === "running") {
+        // 고스트 세션 감지: 너무 오래된 세션은 일시정지 상태로 복구
+        if (isStaleSession(session)) {
+          console.warn("[useCheckIn] Stale ghost session detected, recovering as paused. cardId:", cardId);
+          elapsedBeforePauseRef.current = session.elapsedBeforePause;
+          startedAtTimestampRef.current = 0;
+          lastResumedAtRef.current = undefined;
+          startedAtISORef.current = session.startedAt;
+          setStartedAt(session.startedAt);
+          setElapsedSeconds(session.elapsedBeforePause);
+          setTimerState("paused");
+          timerStateRef.current = "paused";
+
+          const normalized: TimerSession = {
+            cardId,
+            startedAt: session.startedAt,
+            elapsedBeforePause: session.elapsedBeforePause,
+            lastResumedAt: undefined,
+            lastSyncedAt: nowISO,
+            state: "paused",
+          };
+          saveSession(normalized);
+          void syncRemoteSession(normalized);
+          return;
+        }
+
         let totalElapsed: number;
         if (session.lastSyncedAt) {
           const syncedMs = new Date(session.lastSyncedAt).getTime();
@@ -201,9 +246,11 @@ export function useCheckIn(cardId: string) {
         elapsedBeforePauseRef.current = totalElapsed;
         startedAtTimestampRef.current = now;
         lastResumedAtRef.current = nowISO;
+        startedAtISORef.current = session.startedAt;
         setStartedAt(session.startedAt);
         setElapsedSeconds(totalElapsed);
         setTimerState("running");
+        timerStateRef.current = "running";
         const normalized: TimerSession = {
           cardId,
           startedAt: session.startedAt,
@@ -219,9 +266,11 @@ export function useCheckIn(cardId: string) {
         elapsedBeforePauseRef.current = session.elapsedBeforePause;
         startedAtTimestampRef.current = 0;
         lastResumedAtRef.current = undefined;
+        startedAtISORef.current = session.startedAt;
         setStartedAt(session.startedAt);
         setElapsedSeconds(session.elapsedBeforePause);
         setTimerState("paused");
+        timerStateRef.current = "paused";
       }
     };
 
@@ -241,13 +290,32 @@ export function useCheckIn(cardId: string) {
     })();
   }, [cardId, startTicking]);
 
-  // 클린업
+  // 언마운트 시 현재 상태 저장 (lastSyncedAt을 최신으로 유지)
   useEffect(() => {
     return () => {
       stopTicking();
       stopAutoSave();
+      // running/paused 상태에서 나갈 때 현재 상태를 저장해서 lastSyncedAt 최신화
+      if (timerStateRef.current === "running" || timerStateRef.current === "paused") {
+        const nowISO = new Date().toISOString();
+        const session: TimerSession = {
+          cardId,
+          startedAt: startedAtISORef.current ?? nowISO,
+          elapsedBeforePause: timerStateRef.current === "running"
+            ? (startedAtTimestampRef.current === 0
+                ? elapsedBeforePauseRef.current
+                : Math.floor((Date.now() - startedAtTimestampRef.current) / 1000) + elapsedBeforePauseRef.current)
+            : elapsedBeforePauseRef.current,
+          lastResumedAt: lastResumedAtRef.current,
+          lastSyncedAt: nowISO,
+          state: timerStateRef.current === "running" ? "running" : "paused",
+        };
+        saveSession(session);
+        // 비동기 remote sync — 최선의 노력
+        void syncRemoteSession(session);
+      }
     };
-  }, [stopTicking, stopAutoSave]);
+  }, [cardId, stopTicking, stopAutoSave]);
 
   // timerState 변경 시 autosave 갱신
   useEffect(() => {
@@ -266,9 +334,11 @@ export function useCheckIn(cardId: string) {
     elapsedBeforePauseRef.current = 0;
     startedAtTimestampRef.current = nowTs;
     lastResumedAtRef.current = nowISO;
+    startedAtISORef.current = nowISO;
     setStartedAt(nowISO);
     setElapsedSeconds(0);
     setTimerState("running");
+    timerStateRef.current = "running";
 
     saveSession({ cardId, startedAt: nowISO, elapsedBeforePause: 0, lastResumedAt: nowISO, lastSyncedAt: nowISO, state: "running" });
     void syncRemoteSession({ cardId, startedAt: nowISO, elapsedBeforePause: 0, lastResumedAt: nowISO, lastSyncedAt: nowISO, state: "running" });
@@ -282,13 +352,14 @@ export function useCheckIn(cardId: string) {
     lastResumedAtRef.current = undefined;
     setElapsedSeconds(elapsed);
     setTimerState("paused");
+    timerStateRef.current = "paused";
     stopTicking();
 
     const nowISO = new Date().toISOString();
-    const session = { cardId, startedAt: startedAt ?? "", elapsedBeforePause: elapsed, lastResumedAt: undefined, lastSyncedAt: nowISO, state: "paused" as const };
+    const session = { cardId, startedAt: startedAtISORef.current ?? "", elapsedBeforePause: elapsed, lastResumedAt: undefined, lastSyncedAt: nowISO, state: "paused" as const };
     saveSession(session);
     void syncRemoteSession(session);
-  }, [cardId, startedAt, computeElapsed, stopTicking]);
+  }, [cardId, computeElapsed, stopTicking]);
 
   const resume = useCallback(() => {
     const nowTs = Date.now();
@@ -296,10 +367,11 @@ export function useCheckIn(cardId: string) {
     startedAtTimestampRef.current = nowTs;
     lastResumedAtRef.current = nowISO;
     setTimerState("running");
+    timerStateRef.current = "running";
 
     const session = {
       cardId,
-      startedAt: startedAt ?? nowISO,
+      startedAt: startedAtISORef.current ?? nowISO,
       elapsedBeforePause: elapsedBeforePauseRef.current,
       lastResumedAt: nowISO,
       lastSyncedAt: nowISO,
@@ -308,23 +380,39 @@ export function useCheckIn(cardId: string) {
     saveSession(session);
     void syncRemoteSession(session);
     startTicking();
-  }, [cardId, startedAt, startTicking]);
+  }, [cardId, startTicking]);
 
   const checkOut = useCallback((): { saved: boolean; duration: number; startedAt: string; endedAt: string } => {
     const duration = computeElapsed();
     const endedAt = new Date().toISOString();
-    const checkInStartedAt = startedAt ?? new Date().toISOString();
+    const checkInStartedAt = startedAtISORef.current ?? new Date().toISOString();
 
     stopTicking();
     stopAutoSave();
     elapsedBeforePauseRef.current = 0;
     startedAtTimestampRef.current = 0;
     lastResumedAtRef.current = undefined;
+    startedAtISORef.current = null;
     setElapsedSeconds(0);
     setStartedAt(null);
     setTimerState("idle");
+    timerStateRef.current = "idle";
+
+    // 로컬 즉시 제거
     removeSession(cardId);
-    void removeRemoteSession(cardId);
+
+    // 리모트 삭제 — 실패 시 재시도
+    void (async () => {
+      const ok = await removeRemoteSession(cardId);
+      if (!ok) {
+        // 1초 후 재시도
+        await new Promise((r) => setTimeout(r, 1000));
+        const retryOk = await removeRemoteSession(cardId);
+        if (!retryOk) {
+          console.error("[useCheckIn] Remote session cleanup failed after retry. cardId:", cardId);
+        }
+      }
+    })();
 
     return {
       saved: duration >= 60,
@@ -332,7 +420,7 @@ export function useCheckIn(cardId: string) {
       startedAt: checkInStartedAt,
       endedAt,
     };
-  }, [computeElapsed, startedAt, stopTicking, stopAutoSave]);
+  }, [computeElapsed, stopTicking, stopAutoSave, cardId]);
 
   return {
     timerState,

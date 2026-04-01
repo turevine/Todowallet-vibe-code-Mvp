@@ -9,9 +9,8 @@ import TimeLogList from "@/components/TimeLogList";
 import DesignPresetPicker from "@/components/DesignPresetPicker";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useCards } from "@/lib/hooks/useCards";
-import { useCheckIn } from "@/lib/hooks/useCheckIn";
 import { useToast } from "@/lib/hooks/useToast";
-import { CardSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { CardDetailSkeleton } from "@/components/ui/Skeleton";
 import { calculateDDay, calculateElapsedDays, getToday } from "@/lib/utils/date";
 import { formatTotalTime } from "@/lib/utils/format";
 import { createClient } from "@/lib/supabase/client";
@@ -21,11 +20,13 @@ import type { ProjectCard as ProjectCardRow, ProjectCardWithStats } from "@/type
 function CardDetailContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { activeCards, completeCard, uncompleteCard, updateCard, refresh: refreshCards } = useCards();
+  const { activeCards, completedCards, completeCard, uncompleteCard, updateCard, refresh: refreshCards } = useCards();
   const { showToast } = useToast();
 
-  const [card, setCard] = useState<ProjectCardWithStats | null>(null);
-  const [loading, setLoading] = useState(true);
+  // activeCards/completedCards에서 즉시 카드를 찾아 초기값으로 사용 (스켈레톤 스킵)
+  const cachedCard = activeCards.find((c) => c.id === id) ?? completedCards.find((c) => c.id === id) ?? null;
+  const [card, setCard] = useState<ProjectCardWithStats | null>(cachedCard);
+  const [loading, setLoading] = useState(!cachedCard);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const [editing, setEditing] = useState(false);
@@ -36,7 +37,7 @@ function CardDetailContent() {
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const { timerState } = useCheckIn(id);
+  const [timerState, setTimerState] = useState<"idle" | "running" | "paused">("idle");
 
   const fetchCard = useCallback(async () => {
     const supabase = createClient();
@@ -64,9 +65,17 @@ function CardDetailContent() {
     setLoading(false);
   }, [id]);
 
+  // DB에서 최신 데이터를 백그라운드로 가져옴
   useEffect(() => {
     fetchCard();
   }, [fetchCard]);
+
+  // activeCards에서 캐시된 데이터가 뒤늦게 도착할 때도 반영
+  useEffect(() => {
+    if (card || !cachedCard) return;
+    setCard(cachedCard);
+    setLoading(false);
+  }, [cachedCard]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync live data from useCards (real-time timer updates)
   useEffect(() => {
@@ -133,13 +142,7 @@ function CardDetailContent() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen px-5 pt-20 space-y-4">
-        <CardSkeleton />
-        <Skeleton className="h-14 w-full" />
-        <Skeleton className="h-14 w-full" />
-      </div>
-    );
+    return <CardDetailSkeleton />;
   }
 
   if (!card) {
@@ -264,6 +267,7 @@ function CardDetailContent() {
                     isCompleted={card.is_completed}
                     onTimeLogCreated={handleTimeLogCreated}
                     onComplete={() => setShowCompleteConfirm(true)}
+                    onTimerStateChange={setTimerState}
                   />
                 </div>
 
