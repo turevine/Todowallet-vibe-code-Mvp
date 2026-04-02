@@ -91,21 +91,34 @@ export function useTimeLogs() {
   }, []);
 
   const createTimeLog = useCallback(
-    async (cardId: string, startedAt: string, endedAt: string, durationSeconds: number) => {
+    async (cardId: string, startedAt: string, endedAt: string, durationSeconds: number): Promise<boolean> => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) return false;
 
       const loggedDate = format(new Date(startedAt), "yyyy-MM-dd");
 
-      await supabase.from("time_logs").insert({
-        card_id: cardId,
-        user_id: user.id,
-        started_at: startedAt,
-        ended_at: endedAt,
-        duration_seconds: durationSeconds,
-        logged_date: loggedDate,
-      });
+      const { error } = await supabase.from("time_logs").insert(
+        {
+          card_id: cardId,
+          user_id: user.id,
+          started_at: startedAt,
+          ended_at: endedAt,
+          duration_seconds: durationSeconds,
+          logged_date: loggedDate,
+        },
+        {
+          onConflict: "user_id,card_id,started_at",
+          ignoreDuplicates: true,
+        },
+      );
+
+      if (error) {
+        console.error("[useTimeLogs] createTimeLog failed:", error.message);
+        return false;
+      }
+
+      return true;
     },
     [],
   );

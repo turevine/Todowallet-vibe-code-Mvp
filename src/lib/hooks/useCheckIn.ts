@@ -196,6 +196,19 @@ export function useCheckIn(cardId: string) {
     }
   }, []);
 
+  const resetToIdle = useCallback(() => {
+    stopTicking();
+    stopAutoSave();
+    elapsedBeforePauseRef.current = 0;
+    startedAtTimestampRef.current = 0;
+    lastResumedAtRef.current = undefined;
+    startedAtISORef.current = null;
+    setElapsedSeconds(0);
+    setStartedAt(null);
+    setTimerState("idle");
+    timerStateRef.current = "idle";
+  }, [stopTicking, stopAutoSave]);
+
   // 마운트 시 기존 세션 자동 복구
   const mountedRef = useRef(false);
   useEffect(() => {
@@ -326,6 +339,20 @@ export function useCheckIn(cardId: string) {
     }
   }, [timerState, startAutoSave, stopAutoSave]);
 
+  // 같은 브라우저의 다른 탭에서 체크아웃/상태 변경 시 동기화
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== STORAGE_KEY) return;
+      const latest = loadSession(cardId);
+      if (!latest && timerStateRef.current !== "idle") {
+        resetToIdle();
+      }
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [cardId, resetToIdle]);
+
   const checkIn = useCallback(() => {
     const now = new Date();
     const nowTs = now.getTime();
@@ -387,16 +414,7 @@ export function useCheckIn(cardId: string) {
     const endedAt = new Date().toISOString();
     const checkInStartedAt = startedAtISORef.current ?? new Date().toISOString();
 
-    stopTicking();
-    stopAutoSave();
-    elapsedBeforePauseRef.current = 0;
-    startedAtTimestampRef.current = 0;
-    lastResumedAtRef.current = undefined;
-    startedAtISORef.current = null;
-    setElapsedSeconds(0);
-    setStartedAt(null);
-    setTimerState("idle");
-    timerStateRef.current = "idle";
+    resetToIdle();
 
     // 로컬 즉시 제거
     removeSession(cardId);
@@ -420,7 +438,7 @@ export function useCheckIn(cardId: string) {
       startedAt: checkInStartedAt,
       endedAt,
     };
-  }, [computeElapsed, stopTicking, stopAutoSave, cardId]);
+  }, [computeElapsed, resetToIdle, cardId]);
 
   return {
     timerState,

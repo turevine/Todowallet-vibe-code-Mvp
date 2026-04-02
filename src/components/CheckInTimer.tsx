@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useCheckIn } from "@/lib/hooks/useCheckIn";
 import { useTimeLogs } from "@/lib/hooks/useTimeLogs";
 import { useToast } from "@/lib/hooks/useToast";
@@ -34,16 +34,25 @@ export default function CheckInTimer({
 
   const { createTimeLog } = useTimeLogs();
   const { showToast } = useToast();
+  const isCheckingOutRef = useRef(false);
 
   const handleCheckOut = async () => {
+    if (isCheckingOutRef.current) return;
+    isCheckingOutRef.current = true;
     const result = checkOut();
     if (!result.saved) {
       showToast("1분 이상 기록해야 저장됩니다", "warning");
+      isCheckingOutRef.current = false;
       return;
     }
-    await createTimeLog(cardId, result.startedAt, result.endedAt, result.duration);
-    showToast("기록이 저장되었습니다", "success");
-    onTimeLogCreated();
+    const created = await createTimeLog(cardId, result.startedAt, result.endedAt, result.duration);
+    if (created) {
+      showToast("기록이 저장되었습니다", "success");
+      onTimeLogCreated();
+    } else {
+      showToast("기록 저장에 실패했어요. 잠시 후 다시 시도해주세요", "error");
+    }
+    isCheckingOutRef.current = false;
   };
 
   if (isCompleted) return null;
