@@ -34,12 +34,28 @@ export default function CheckInTimer({
 
   const { createTimeLog } = useTimeLogs();
   const { showToast } = useToast();
+  const isCheckingInRef = useRef(false);
   const isCheckingOutRef = useRef(false);
+
+  const handleCheckIn = async () => {
+    if (isCheckingInRef.current) return;
+    isCheckingInRef.current = true;
+    const result = await checkIn();
+    if (!result.ok && result.reason === "already_checked_in") {
+      showToast("이미 체크인되어 있습니다", "warning");
+    }
+    isCheckingInRef.current = false;
+  };
 
   const handleCheckOut = async () => {
     if (isCheckingOutRef.current) return;
     isCheckingOutRef.current = true;
-    const result = checkOut();
+    const result = await checkOut();
+    if ("reason" in result && result.reason === "already_checked_out") {
+      showToast("이미 체크아웃되어 있습니다", "warning");
+      isCheckingOutRef.current = false;
+      return;
+    }
     if (!result.saved) {
       showToast("1분 이상 기록해야 저장됩니다", "warning");
       isCheckingOutRef.current = false;
@@ -62,7 +78,7 @@ export default function CheckInTimer({
       {timerState === "idle" && (
         <div className="space-y-3">
           <button
-            onClick={checkIn}
+            onClick={handleCheckIn}
             className="pressable touch-target w-full h-[52px] bg-gray-900 rounded-xl text-[15px] font-semibold text-white hover:bg-gray-800 active:bg-gray-700 transition-colors"
           >
             체크인

@@ -92,6 +92,14 @@ interface RemoteSessionRow {
   updated_at: string;
 }
 
+type CheckInActionResult =
+  | { ok: true }
+  | { ok: false; reason: "already_checked_in" };
+
+type CheckOutActionResult =
+  | { saved: boolean; duration: number; startedAt: string; endedAt: string }
+  | { saved: false; duration: 0; startedAt: ""; endedAt: ""; reason: "already_checked_out" };
+
 async function loadRemoteSession(cardId: string): Promise<TimerSession | null> {
   const supabase = createClient();
   const { data: { session: authSession } } = await supabase.auth.getSession();
@@ -353,7 +361,12 @@ export function useCheckIn(cardId: string) {
     return () => window.removeEventListener("storage", onStorage);
   }, [cardId, resetToIdle]);
 
-  const checkIn = useCallback(() => {
+  const checkIn = useCallback(async (): Promise<CheckInActionResult> => {
+    const remoteSession = await loadRemoteSession(cardId);
+    if (remoteSession) {
+      return { ok: false, reason: "already_checked_in" };
+    }
+
     const now = new Date();
     const nowTs = now.getTime();
     const nowISO = now.toISOString();
@@ -370,6 +383,7 @@ export function useCheckIn(cardId: string) {
     saveSession({ cardId, startedAt: nowISO, elapsedBeforePause: 0, lastResumedAt: nowISO, lastSyncedAt: nowISO, state: "running" });
     void syncRemoteSession({ cardId, startedAt: nowISO, elapsedBeforePause: 0, lastResumedAt: nowISO, lastSyncedAt: nowISO, state: "running" });
     startTicking();
+    return { ok: true };
   }, [cardId, startTicking]);
 
   const pause = useCallback(() => {
@@ -409,7 +423,12 @@ export function useCheckIn(cardId: string) {
     startTicking();
   }, [cardId, startTicking]);
 
-  const checkOut = useCallback((): { saved: boolean; duration: number; startedAt: string; endedAt: string } => {
+  const checkOut = useCallback(async (): Promise<CheckOutActionResult> => {
+    const remoteSession = await loadRemoteSession(cardId);
+    if (!remoteSession && timerStateRef.current === "idle") {
+      return { saved: false, duration: 0, startedAt: "", endedAt: "", reason: "already_checked_out" };
+    }
+
     const duration = computeElapsed();
     const endedAt = new Date().toISOString();
     const checkInStartedAt = startedAtISORef.current ?? new Date().toISOString();
