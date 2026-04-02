@@ -198,6 +198,43 @@ export function useCards() {
     refresh();
   }, [refresh]);
 
+  // 카드 수정/삭제/복원 상태를 다른 브라우저에서도 즉시 반영
+  useEffect(() => {
+    let mounted = true;
+    let cleanup: (() => void) | null = null;
+
+    void (async () => {
+      const userId = await getUserId();
+      if (!mounted || !userId) return;
+
+      const supabase = createClient();
+      const channel = supabase
+        .channel(`project_cards_live_${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "project_cards",
+            filter: `user_id=eq.${userId}`,
+          },
+          () => {
+            void refresh();
+          },
+        )
+        .subscribe();
+
+      cleanup = () => {
+        void supabase.removeChannel(channel);
+      };
+    })();
+
+    return () => {
+      mounted = false;
+      cleanup?.();
+    };
+  }, [refresh]);
+
   useEffect(() => {
     readLiveSession();
     void readRemoteSessions();

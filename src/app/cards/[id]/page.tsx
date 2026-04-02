@@ -168,6 +168,20 @@ function CardDetailContent() {
     );
   }
 
+  if (card.is_deleted) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen px-5">
+        <p className="text-sm text-gray-400 mb-4">휴지통에 들어간 카드입니다</p>
+        <button
+          onClick={() => router.replace("/home")}
+          className="text-sm text-gray-600 underline"
+        >
+          홈으로 돌아가기
+        </button>
+      </div>
+    );
+  }
+
   return (
     <motion.div
       className="flex flex-col min-h-screen bg-white"

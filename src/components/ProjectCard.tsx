@@ -162,6 +162,7 @@ export default function ProjectCard({ card, isFront, todayMode = false }: Projec
         aspectRatio: isFront && todaySessions.length > 0 ? undefined : "1.6 / 1",
       }}
       whileHover={{ y: -4, boxShadow: "0 16px 30px rgba(0,0,0,0.18)" }}
+      whileTap={{ y: -4, boxShadow: "0 16px 30px rgba(0,0,0,0.18)" }}
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
     >
       <div className="px-5 pt-3 pb-5 h-full flex flex-col" style={{ color: preset.textColor }}>
