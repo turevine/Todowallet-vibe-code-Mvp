@@ -29,7 +29,7 @@ function TrashView({
 }: {
   onBack: () => void;
   fetchDeletedCards: () => Promise<ProjectCardWithStats[]>;
-  restoreCard: (id: string) => Promise<void>;
+  restoreCard: (id: string) => Promise<"restored" | "already_deleted" | "error">;
   hardDeleteCard: (id: string) => Promise<void>;
 }) {
   const { showToast } = useToast();
@@ -52,8 +52,14 @@ function TrashView({
   }, [load]);
 
   const handleRestore = async (id: string) => {
-    await restoreCard(id);
-    showToast("카드를 복원했습니다", "success");
+    const result = await restoreCard(id);
+    if (result === "restored") {
+      showToast("카드를 복원했습니다", "success");
+    } else if (result === "already_deleted") {
+      showToast("이미 삭제된 카드입니다", "warning");
+    } else {
+      showToast("복원에 실패했어요. 잠시 후 다시 시도해주세요", "error");
+    }
     await load();
   };
 
@@ -168,7 +174,7 @@ function SettingsSheet({
   isOpen: boolean;
   onClose: () => void;
   fetchDeletedCards: () => Promise<ProjectCardWithStats[]>;
-  restoreCard: (id: string) => Promise<void>;
+  restoreCard: (id: string) => Promise<"restored" | "already_deleted" | "error">;
   hardDeleteCard: (id: string) => Promise<void>;
 }) {
   const { signOut, deleteAccount } = useAuth();
@@ -309,35 +315,36 @@ function HomeContent() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      {/* 헤더 */}
-      <header className="flex items-center justify-between px-5 pt-14 pb-4">
-        <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-          <Image src="/favicon.svg" alt="TodoWallet 로고" width={24} height={24} priority />
-          <span>TodoWallet</span>
-        </h1>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="pressable touch-target w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </button>
-          <button
-            onClick={() => router.push("/cards/new")}
-            className="pressable touch-target w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.8" strokeLinecap="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
-        </div>
-      </header>
+      <div className="home-frame w-full mx-auto">
+        {/* 헤더 */}
+        <header className="flex items-center justify-between px-5 pt-14 pb-4">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+            <Image src="/favicon.svg" alt="TodoWallet 로고" width={24} height={24} priority />
+            <span>TodoWallet</span>
+          </h1>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="pressable touch-target w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </button>
+            <button
+              onClick={() => router.push("/cards/new")}
+              className="pressable touch-target w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="1.8" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
+        </header>
 
-      {/* 메인 */}
-      <main className="flex-1 px-5">
+        {/* 메인 */}
+        <main className="flex-1 px-5 pb-8">
         {/* 히트맵 배너 */}
         <AnimatePresence initial={false}>
           {activeCards.length > 0 && !cardOpening && (
@@ -353,75 +360,77 @@ function HomeContent() {
           )}
         </AnimatePresence>
 
-        {activeCards.length === 0 ? (
-          /* 빈 상태 */
-          <div className="flex flex-col items-center justify-center py-24">
-            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="1.5" strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-            </div>
-            <p className="text-sm text-gray-400 mb-4">
-              아직 프로젝트가 없어요
-            </p>
-            <button
-              onClick={() => router.push("/cards/new")}
-              className="pressable touch-target px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 active:bg-gray-700 transition-colors"
-            >
-              첫 번째 카드 만들기
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="card-column">
-              {/* 오늘 토글 + 카드 관리 */}
-              <div className="flex items-center justify-between mb-3">
+        <div className="lg:flex lg:items-start lg:justify-between lg:gap-10">
+          <section className="lg:w-[430px] lg:shrink-0">
+            {activeCards.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24">
+                <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-400 mb-4">
+                  아직 프로젝트가 없어요
+                </p>
                 <button
-                  onClick={toggleTodayMode}
-                  className="pressable flex items-center gap-1.5 py-1 px-2"
+                  onClick={() => router.push("/cards/new")}
+                  className="pressable touch-target px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800 active:bg-gray-700 transition-colors"
                 >
-                  <div
-                    className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${
-                      todayMode ? "bg-indigo-500" : "bg-gray-300"
-                    }`}
-                  >
-                    <div
-                      className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                        todayMode ? "translate-x-[16px]" : "translate-x-[2px]"
-                      }`}
-                    />
-                  </div>
-                  <span className={`text-xs transition-colors ${todayMode ? "text-indigo-500 font-medium" : "text-gray-400"}`}>
-                    오늘
-                  </span>
-                </button>
-                <button
-                  onClick={() => router.push("/cards/manage")}
-                  className="pressable text-xs text-gray-400 hover:text-gray-600 transition-colors py-1 px-2"
-                >
-                  카드관리
+                  첫 번째 카드 만들기
                 </button>
               </div>
+            ) : (
+              <div className="card-column lg:mx-0">
+                {/* 오늘 토글 + 카드 관리 */}
+                <div className="flex items-center justify-between mb-3">
+                  <button
+                    onClick={toggleTodayMode}
+                    className="pressable flex items-center gap-1.5 py-1 px-2"
+                  >
+                    <div
+                      className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${
+                        todayMode ? "bg-indigo-500" : "bg-gray-300"
+                      }`}
+                    >
+                      <div
+                        className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                          todayMode ? "translate-x-[16px]" : "translate-x-[2px]"
+                        }`}
+                      />
+                    </div>
+                    <span className={`text-xs transition-colors ${todayMode ? "text-indigo-500 font-medium" : "text-gray-400"}`}>
+                      오늘
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => router.push("/cards/manage")}
+                    className="pressable text-xs text-gray-400 hover:text-gray-600 transition-colors py-1 px-2"
+                  >
+                    카드관리
+                  </button>
+                </div>
 
-              {/* 카드 스택 */}
-              <CardStack
-                cards={activeCards}
-                newCardEntry={isNewCardEntry}
-                todayMode={todayMode}
-                onCardOpenStart={() => setCardOpening(true)}
-                onDelete={softDeleteCard}
-                onComplete={completeCard}
-                onUpdateDesign={async (id, preset) => {
-                  await updateCard(id, { design_preset: preset });
-                }}
-              />
-            </div>
-          </>
-        )}
+                <CardStack
+                  cards={activeCards}
+                  newCardEntry={isNewCardEntry}
+                  todayMode={todayMode}
+                  onCardOpenStart={() => setCardOpening(true)}
+                  onDelete={softDeleteCard}
+                  onComplete={completeCard}
+                  onUpdateDesign={async (id, preset) => {
+                    await updateCard(id, { design_preset: preset });
+                  }}
+                />
+              </div>
+            )}
+          </section>
 
-        {/* 완료 섹션 */}
-        <CompletedSection cards={completedCards} />
-      </main>
+          <aside className="mt-8 lg:mt-0 lg:w-[430px] lg:max-w-[430px] lg:ml-auto">
+            <CompletedSection cards={completedCards} />
+          </aside>
+        </div>
+        </main>
+      </div>
 
       {/* 설정 바텀시트 */}
       <SettingsSheet

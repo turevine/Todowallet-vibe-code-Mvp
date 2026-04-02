@@ -19,28 +19,23 @@ body {
 }
 
 body {
-  background: #f5f5f7;
+  background: #ffffff;
   color: #1a1a1a;
   font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
   font-size: 15px;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .app-shell {
   width: 100%;
-  max-width: var(--app-card-max);
-  margin: 0 auto;
-  min-height: 100vh;
+  min-height: 100dvh;
   background: #ffffff;
 }
 
-/* iPad / 태블릿: 셸만 넓혀 양옆 여백 활용 (카드는 .card-column 으로 430px 유지) */
-@media (min-width: 768px) {
-  .app-shell {
-    max-width: min(100vw - 48px, 960px);
-  }
+.home-frame {
+  max-width: 1080px;
 }
 
 /* 카드 스택·미리보기 등 — 셸이 넓어져도 카드 실물 크기는 변하지 않음 */

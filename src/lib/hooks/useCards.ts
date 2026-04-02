@@ -380,13 +380,18 @@ export function useCards() {
   );
 
   const restoreCard = useCallback(
-    async (id: string) => {
+    async (id: string): Promise<"restored" | "already_deleted" | "error"> => {
       const supabase = createClient();
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("project_cards")
         .update({ is_deleted: false, deleted_at: null, updated_at: new Date().toISOString() })
-        .eq("id", id);
-      if (!error) await refresh();
+        .eq("id", id)
+        .eq("is_deleted", true)
+        .select("id");
+      if (error) return "error";
+      if (!data || data.length === 0) return "already_deleted";
+      await refresh();
+      return "restored";
     },
     [refresh],
   );

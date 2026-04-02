@@ -46,7 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko" className="h-full antialiased">
-      <body className="min-h-full">
+      <body className="min-h-full bg-white">
         <ToastProvider>
           <div className="app-shell flex min-h-screen flex-col">{children}</div>
         </ToastProvider>
