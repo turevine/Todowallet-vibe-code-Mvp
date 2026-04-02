@@ -126,7 +126,7 @@ export default function ProjectCard({ card, isFront, todayMode = false }: Projec
       .eq("card_id", card.id)
       .gte("started_at", from)
       .lt("started_at", to)
-      .order("started_at", { ascending: false })
+      .order("started_at", { ascending: true })
       .then(({ data }) => {
         if (data) {
           setTodaySessions(
