@@ -41,7 +41,7 @@ function ManageContent() {
       </header>
 
       {/* 리스트 */}
-      <main className="flex-1 px-5 pb-8">
+      <main className="flex-1 px-5 pb-8 md:max-w-3xl md:mx-auto md:w-full">
         <CardManageList
           activeCards={activeCards}
           completedCards={completedCards}

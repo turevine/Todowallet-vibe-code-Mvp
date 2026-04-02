@@ -24,6 +24,18 @@ export function formatDurationKorean(totalSeconds: number): string {
   return `${h}시간 ${m}분`;
 }
 
+/**
+ * 목표 시간 대비 10단계 opacity 반환 (히트맵용)
+ * level 0 = 0초, level 1~10 = 목표시간의 10%씩
+ */
+export function getHeatmapOpacity(seconds: number, targetSeconds: number): number {
+  if (seconds === 0) return 0;
+  const ratio = seconds / targetSeconds;
+  // 1~10 단계, 각 10%씩. 최소 1단계, 최대 10단계
+  const level = Math.min(10, Math.max(1, Math.ceil(ratio * 10)));
+  return level * 0.1;
+}
+
 /** 초 → "2:30" 형태 (최근 기록용, 시:분) */
 export function formatShortTime(totalSeconds: number): string {
   const h = Math.floor(totalSeconds / 3600);

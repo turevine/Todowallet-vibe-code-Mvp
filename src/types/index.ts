@@ -5,6 +5,7 @@ export interface ProjectCard {
   title: string;
   deadline: string | null;       // ISO date string
   design_preset: string;
+  target_seconds: number | null;  // 일일 목표 시간 (초), null이면 기본 3600
   display_order: number;
   is_completed: boolean;
   completed_at: string | null;
@@ -52,6 +53,7 @@ export interface CardHeatmapSummary {
   cardId: string;
   title: string;
   designPreset: string;
+  targetSeconds: number;
   totalSeconds: number;
   days: HeatmapDay[];
 }

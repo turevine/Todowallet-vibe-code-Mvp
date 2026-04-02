@@ -27,7 +27,7 @@ export default function TimerRecoveryModal({
       />
       <div className="fixed inset-0 z-50 flex items-end justify-center">
         <motion.div
-          className="bg-white rounded-t-3xl w-full max-w-[430px] p-6 shadow-xl safe-area-bottom"
+          className="bg-white rounded-t-3xl w-full max-w-app-card p-6 shadow-xl safe-area-bottom"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}

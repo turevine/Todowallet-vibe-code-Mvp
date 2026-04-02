@@ -15,6 +15,7 @@ interface CardStackProps {
   onDelete?: (id: string) => Promise<void>;
   onUpdateDesign?: (id: string, preset: string) => Promise<void>;
   newCardEntry?: boolean;
+  todayMode?: boolean;
   onCardOpenStart?: (id: string) => void;
 }
 
@@ -29,6 +30,7 @@ export default function CardStack({
   onDelete,
   onUpdateDesign,
   newCardEntry = false,
+  todayMode = false,
   onCardOpenStart,
 }: CardStackProps) {
   const router = useRouter();
@@ -118,7 +120,7 @@ export default function CardStack({
                   enabled={!openingCardId}
                 >
                   <div className={`relative ${openingCardId ? "pointer-events-none" : ""}`}>
-                    <ProjectCard card={card} isFront={isFront} />
+                    <ProjectCard card={card} isFront={isFront} todayMode={todayMode} />
                     {!isFront && (
                       <div
                         className="absolute bottom-0 left-0 right-0 pointer-events-none rounded-b-2xl"

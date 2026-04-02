@@ -20,6 +20,8 @@ function NewCardContent() {
 
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [targetHours, setTargetHours] = useState(1);
+  const [targetMinutes, setTargetMinutes] = useState(0);
   const [designPreset, setDesignPreset] = useState(DEFAULT_PRESET_ID);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -33,6 +35,7 @@ function NewCardContent() {
     title: title || "목표를 입력하세요",
     deadline: deadline || null,
     design_preset: designPreset,
+    target_seconds: targetHours * 3600 + targetMinutes * 60,
     display_order: 0,
     is_completed: false,
     completed_at: null,
@@ -51,7 +54,8 @@ function NewCardContent() {
     setSubmitting(true);
     setError("");
     try {
-      const success = await createCard(title.trim(), deadline || null, designPreset);
+      const targetSeconds = targetHours * 3600 + targetMinutes * 60;
+      const success = await createCard(title.trim(), deadline || null, designPreset, targetSeconds || 3600);
       if (success) {
         showToast("카드가 생성되었습니다", "success");
         router.replace("/home?new=1");
@@ -87,8 +91,8 @@ function NewCardContent() {
         </button>
       </header>
 
-      {/* 폼 */}
-      <main className="flex-1 px-5 pb-8">
+      {/* 폼 — 태블릿에서 필드는 셸 폭 활용, 미리보기 카드만 430px */}
+      <main className="flex-1 px-5 pb-8 md:max-w-2xl md:mx-auto md:w-full">
         {/* 목표 이름 */}
         <section className="mb-7">
           <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -130,6 +134,41 @@ function NewCardContent() {
           )}
         </section>
 
+        {/* 일일 목표 시간 */}
+        <section className="mb-7">
+          <label className="block text-sm font-semibold text-gray-900 mb-2">
+            일일 목표 시간
+          </label>
+          <p className="text-[11px] text-gray-400 mb-2">
+            히트맵 색상 기준이 됩니다
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                max={23}
+                value={targetHours}
+                onChange={(e) => setTargetHours(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
+                className="w-[64px] h-[48px] px-3 bg-gray-50 border border-gray-200 rounded-xl text-[15px] text-gray-900 text-center outline-none focus:border-gray-400 transition-colors"
+              />
+              <span className="text-sm text-gray-500">시간</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={0}
+                max={59}
+                step={10}
+                value={targetMinutes}
+                onChange={(e) => setTargetMinutes(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+                className="w-[64px] h-[48px] px-3 bg-gray-50 border border-gray-200 rounded-xl text-[15px] text-gray-900 text-center outline-none focus:border-gray-400 transition-colors"
+              />
+              <span className="text-sm text-gray-500">분</span>
+            </div>
+          </div>
+        </section>
+
         {/* 카드 디자인 */}
         <section className="mb-7">
           <label className="block text-sm font-semibold text-gray-900 mb-3">
@@ -146,7 +185,7 @@ function NewCardContent() {
           <label className="block text-sm font-semibold text-gray-900 mb-3">
             미리보기
           </label>
-          <div className="pointer-events-none">
+          <div className="pointer-events-none card-column">
             <ProjectCard card={previewCard} isFront />
           </div>
         </section>

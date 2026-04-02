@@ -4,16 +4,62 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { getPreset } from "@/constants/design-presets";
-import { formatDate } from "@/lib/utils/date";
+import { formatDDay } from "@/lib/utils/date";
 import type { ProjectCardWithStats } from "@/types";
 
 interface CompletedSectionProps {
   cards: ProjectCardWithStats[];
 }
 
+function MiniCompletedCard({ card }: { card: ProjectCardWithStats }) {
+  const router = useRouter();
+  const preset = getPreset(card.design_preset);
+  const dDayText = formatDDay(card.d_day, card.is_completed);
+
+  return (
+    <motion.button
+      layout
+      onClick={() => router.push(`/cards/${card.id}`)}
+      className={`pressable w-full rounded-xl overflow-hidden text-left ${preset.patternClass ?? ""}`}
+      style={{ background: preset.gradient }}
+      whileHover={{ y: -2, boxShadow: "0 8px 20px rgba(0,0,0,0.12)" }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+    >
+      <div className="px-4 py-3 flex flex-col" style={{ color: preset.textColor }}>
+        {/* 제목 + 진행일수 */}
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-semibold truncate flex-1 mr-2">
+            {card.title}
+          </h4>
+          <span className="text-[10px] opacity-60 whitespace-nowrap">
+            {card.elapsed_days}일째
+          </span>
+        </div>
+
+        {/* 총 투자시간 + D-Day */}
+        <div className="flex items-center justify-between mt-0.5">
+          <span className="text-sm font-bold tracking-tight font-mono tabular-nums">
+            {card.total_hours_display}
+          </span>
+          {dDayText && (
+            <span
+              className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
+              style={{
+                backgroundColor: "rgba(255,255,255,0.12)",
+                color: preset.textColor,
+              }}
+            >
+              {dDayText}
+            </span>
+          )}
+        </div>
+      </div>
+    </motion.button>
+  );
+}
+
 export default function CompletedSection({ cards }: CompletedSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const router = useRouter();
 
   if (cards.length === 0) return null;
 
@@ -46,40 +92,9 @@ export default function CompletedSection({ cards }: CompletedSectionProps) {
             transition={{ duration: 0.2 }}
             className="mt-3 space-y-2 overflow-hidden"
           >
-            {cards.map((card) => {
-            const preset = getPreset(card.design_preset);
-            return (
-              <motion.button
-                layout
-                key={card.id}
-                onClick={() => router.push(`/cards/${card.id}`)}
-                className="pressable w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-gray-50 active:bg-gray-100 transition-colors text-left"
-              >
-                {/* 컬러 도트 */}
-                <div
-                  className="w-3 h-3 rounded-full shrink-0"
-                  style={{ background: preset.gradient }}
-                />
-
-                {/* 정보 */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-emerald-500 shrink-0">✓</span>
-                    <span className="text-sm font-medium text-gray-800 truncate">
-                      {card.title}
-                    </span>
-                    <span className="text-xs text-gray-400 shrink-0 ml-auto">
-                      {card.total_hours_display}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-gray-400 mt-0.5 ml-5">
-                    {formatDate(card.created_at)}
-                    {card.completed_at && ` ~ ${formatDate(card.completed_at)}`}
-                  </p>
-                </div>
-              </motion.button>
-            );
-          })}
+            {cards.map((card) => (
+              <MiniCompletedCard key={card.id} card={card} />
+            ))}
           </motion.div>
         )}
       </AnimatePresence>

@@ -58,7 +58,7 @@ export default function CardEditMenu({
 
             {/* 바텀시트 */}
             <motion.div
-              className="fixed bottom-0 left-1/2 w-full max-w-[430px] bg-white rounded-t-2xl z-50 pb-8"
+              className="fixed bottom-0 left-1/2 w-full max-w-app-card bg-white rounded-t-2xl z-50 pb-8"
               style={{ x: "-50%" }}
               initial={{ y: "100%" }}
               animate={{ y: 0 }}

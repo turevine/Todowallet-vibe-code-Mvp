@@ -4,29 +4,30 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getMonthRange } from "@/lib/utils/date";
-import { formatDurationKorean } from "@/lib/utils/format";
+import { formatDurationKorean, getHeatmapOpacity } from "@/lib/utils/format";
 import { getPreset } from "@/constants/design-presets";
 import { getDaysInMonth, getDay } from "date-fns";
 import { motion } from "framer-motion";
 import type { ProjectCardWithStats } from "@/types";
 
-/* ── 색상 단계 ── */
+/* ── 색상 단계 (목표시간 기반 10단계) ── */
 const BRAND = "#6366F1";
+const DEFAULT_TARGET = 3600; // 기본 1시간
 
-function getDotStyle(seconds: number): { backgroundColor: string; opacity: number } {
+function getDotStyle(seconds: number, targetSeconds: number = DEFAULT_TARGET): { backgroundColor: string; opacity: number } {
   if (seconds === 0) return { backgroundColor: "#E5E7EB", opacity: 1 };
-  if (seconds <= 3600) return { backgroundColor: BRAND, opacity: 0.3 };
-  if (seconds <= 10800) return { backgroundColor: BRAND, opacity: 0.6 };
-  return { backgroundColor: BRAND, opacity: 1.0 };
+  return { backgroundColor: BRAND, opacity: getHeatmapOpacity(seconds, targetSeconds) };
 }
 
 /* ── 카드별 미니 히트맵 한 줄 ── */
 function CardMiniRow({
   days,
   accentColor,
+  targetSeconds,
 }: {
   days: { date: string; seconds: number }[];
   accentColor: string;
+  targetSeconds: number;
 }) {
   return (
     <div className="flex gap-[3px] flex-wrap">
@@ -36,7 +37,7 @@ function CardMiniRow({
           className="w-[8px] h-[8px] rounded-full"
           style={{
             backgroundColor: d.seconds > 0 ? accentColor : "#E5E7EB",
-            opacity: d.seconds === 0 ? 0.4 : d.seconds <= 3600 ? 0.4 : d.seconds <= 10800 ? 0.7 : 1,
+            opacity: d.seconds === 0 ? 0.4 : getHeatmapOpacity(d.seconds, targetSeconds),
           }}
         />
       ))}
@@ -70,6 +71,7 @@ interface CardMonthlySummary {
   cardId: string;
   title: string;
   designPreset: string;
+  targetSeconds: number;
   totalSeconds: number;
   days: { date: string; seconds: number }[];
 }
@@ -165,6 +167,7 @@ export default function HeatmapCalendar({ cards, initialCardId }: HeatmapCalenda
           cardId,
           title: card.title,
           designPreset: card.design_preset,
+          targetSeconds: card.target_seconds ?? DEFAULT_TARGET,
           totalSeconds: total,
           days,
         });
@@ -259,6 +262,17 @@ export default function HeatmapCalendar({ cards, initialCardId }: HeatmapCalenda
     [router, searchParams],
   );
 
+  // 필터된 카드의 목표시간 (전체일 때는 모든 카드 목표시간 합산)
+  const filteredTarget = useMemo(() => {
+    if (filterCardId !== "all") {
+      const card = allCards.find((c) => c.id === filterCardId);
+      return card?.target_seconds ?? DEFAULT_TARGET;
+    }
+    // 전체: 활성 카드들의 목표시간 합산
+    if (allCards.length === 0) return DEFAULT_TARGET;
+    return allCards.reduce((sum, c) => sum + (c.target_seconds ?? DEFAULT_TARGET), 0);
+  }, [filterCardId, allCards]);
+
   // 선택 날짜 총 시간
   const selectedTotal = dateBreakdown.reduce((sum, b) => sum + b.seconds, 0);
   const selectedMonth = selectedDate ? parseInt(selectedDate.split("-")[1]) : 0;
@@ -319,7 +333,7 @@ export default function HeatmapCalendar({ cards, initialCardId }: HeatmapCalenda
                 return <div key={`empty-${ci}`} className="aspect-square" />;
               }
               const isSelected = selectedDate === cell.date;
-              const dotStyle = getDotStyle(cell.totalSeconds);
+              const dotStyle = getDotStyle(cell.totalSeconds, filteredTarget);
 
               return (
                 <button
@@ -404,7 +418,24 @@ export default function HeatmapCalendar({ cards, initialCardId }: HeatmapCalenda
                       {formatDurationKorean(summary.totalSeconds)}
                     </span>
                   </div>
-                  <CardMiniRow days={summary.days} accentColor={preset.accentColor} />
+                  <CardMiniRow days={summary.days} accentColor={preset.accentColor} targetSeconds={summary.targetSeconds} />
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[10px] text-gray-400">
+                      목표 {formatDurationKorean(summary.targetSeconds)}/일
+                    </span>
+                    {(() => {
+                      const activeDays = summary.days.filter((d) => d.seconds > 0);
+                      if (activeDays.length === 0) return null;
+                      const avg = Math.round(
+                        activeDays.reduce((s, d) => s + d.seconds, 0) / activeDays.length,
+                      );
+                      return (
+                        <span className="text-[10px] text-gray-300">
+                          평균 {formatDurationKorean(avg)}/일
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
               );
             })}

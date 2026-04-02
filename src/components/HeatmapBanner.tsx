@@ -5,17 +5,17 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getPreset } from "@/constants/design-presets";
 import { getMonthRange } from "@/lib/utils/date";
-import { formatDurationKorean } from "@/lib/utils/format";
+import { formatDurationKorean, getHeatmapOpacity } from "@/lib/utils/format";
 import { getDaysInMonth } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import { CircleRowSkeleton } from "@/components/ui/Skeleton";
 import type { ProjectCardWithStats, HeatmapDay } from "@/types";
 
-function getOpacity(seconds: number): number {
+const DEFAULT_TARGET = 3600;
+
+function getOpacity(seconds: number, targetSeconds: number = DEFAULT_TARGET): number {
   if (seconds === 0) return 0.15;
-  if (seconds <= 3600) return 0.4;
-  if (seconds <= 10800) return 0.7;
-  return 1.0;
+  return getHeatmapOpacity(seconds, targetSeconds);
 }
 
 interface HeatmapBannerProps {
@@ -259,7 +259,7 @@ export default function HeatmapBanner({ cards }: HeatmapBannerProps) {
                         key={day.date}
                         className="w-[10px] h-[10px] rounded-full"
                         initial={{ opacity: 0, scale: 0.6 }}
-                        animate={{ opacity: getOpacity(day.totalSeconds), scale: 1 }}
+                        animate={{ opacity: getOpacity(day.totalSeconds, current.card.target_seconds ?? DEFAULT_TARGET), scale: 1 }}
                         transition={{ duration: 0.18, delay: idx * 0.015 + ri * 0.04 }}
                         style={{
                           backgroundColor:
@@ -271,7 +271,24 @@ export default function HeatmapBanner({ cards }: HeatmapBannerProps) {
                 ))}
               </div>
 
-              <div className="mt-2 flex justify-start">
+              <div className="mt-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] opacity-40">
+                    목표 {formatDurationKorean(current.card.target_seconds ?? DEFAULT_TARGET)}/일
+                  </span>
+                  {(() => {
+                    const activeDays = current.days.filter((d) => d.totalSeconds > 0);
+                    if (activeDays.length === 0) return null;
+                    const avg = Math.round(
+                      activeDays.reduce((s, d) => s + d.totalSeconds, 0) / activeDays.length,
+                    );
+                    return (
+                      <span className="text-[10px] opacity-30">
+                        평균 {formatDurationKorean(avg)}/일
+                      </span>
+                    );
+                  })()}
+                </div>
                 <span className="text-[10px] opacity-40">자세히 →</span>
               </div>
             </motion.div>

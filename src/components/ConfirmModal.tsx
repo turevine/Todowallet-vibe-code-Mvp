@@ -46,7 +46,7 @@ export default function ConfirmModal({
             initial={false}
           >
             <motion.div
-              className="bg-white rounded-t-3xl w-full max-w-[430px] shadow-2xl overflow-hidden pb-2 safe-area-bottom"
+              className="bg-white rounded-t-3xl w-full max-w-app-card shadow-2xl overflow-hidden pb-2 safe-area-bottom"
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}

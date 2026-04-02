@@ -10,6 +10,7 @@ import DesignPresetPicker from "@/components/DesignPresetPicker";
 import ConfirmModal from "@/components/ConfirmModal";
 import { useCards } from "@/lib/hooks/useCards";
 import { useToast } from "@/lib/hooks/useToast";
+import { useTodayMode } from "@/lib/hooks/useTodayMode";
 import { CardDetailSkeleton } from "@/components/ui/Skeleton";
 import { calculateDDay, calculateElapsedDays, getToday } from "@/lib/utils/date";
 import { formatTotalTime } from "@/lib/utils/format";
@@ -22,6 +23,7 @@ function CardDetailContent() {
   const router = useRouter();
   const { activeCards, completedCards, completeCard, uncompleteCard, updateCard, refresh: refreshCards } = useCards();
   const { showToast } = useToast();
+  const { todayMode, toggleTodayMode } = useTodayMode();
 
   // activeCards/completedCards에서 즉시 카드를 찾아 초기값으로 사용 (스켈레톤 스킵)
   const cachedCard = activeCards.find((c) => c.id === id) ?? completedCards.find((c) => c.id === id) ?? null;
@@ -32,6 +34,8 @@ function CardDetailContent() {
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
+  const [editTargetHours, setEditTargetHours] = useState(1);
+  const [editTargetMinutes, setEditTargetMinutes] = useState(0);
   const [editPreset, setEditPreset] = useState("");
 
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
@@ -122,6 +126,9 @@ function CardDetailContent() {
     if (!card) return;
     setEditTitle(card.title);
     setEditDeadline(card.deadline ?? "");
+    const ts = card.target_seconds ?? 3600;
+    setEditTargetHours(Math.floor(ts / 3600));
+    setEditTargetMinutes(Math.floor((ts % 3600) / 60));
     setEditPreset(card.design_preset);
     setEditing(true);
   };
@@ -129,10 +136,12 @@ function CardDetailContent() {
   const saveEdit = async () => {
     if (!card || !editTitle.trim()) return;
     setActionLoading(true);
+    const editTargetSeconds = editTargetHours * 3600 + editTargetMinutes * 60;
     await updateCard(card.id, {
       title: editTitle.trim(),
       deadline: editDeadline || null,
       design_preset: editPreset,
+      target_seconds: editTargetSeconds || 3600,
     });
     setEditing(false);
     await fetchCard();
@@ -202,7 +211,7 @@ function CardDetailContent() {
         )}
       </header>
 
-      <main className="flex-1 px-5 pb-10">
+      <main className="flex-1 px-5 pb-10 md:max-w-3xl md:mx-auto md:w-full">
         {editing ? (
           <div className="space-y-6">
             <div>
@@ -236,6 +245,35 @@ function CardDetailContent() {
               )}
             </div>
             <div>
+              <label className="block text-sm font-semibold text-gray-900 mb-2">일일 목표 시간</label>
+              <p className="text-[11px] text-gray-400 mb-2">히트맵 색상 기준이 됩니다</p>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={0}
+                    max={23}
+                    value={editTargetHours}
+                    onChange={(e) => setEditTargetHours(Math.min(23, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="w-[64px] h-[48px] px-3 bg-gray-50 border border-gray-200 rounded-xl text-[15px] text-gray-900 text-center outline-none focus:border-gray-400 transition-colors"
+                  />
+                  <span className="text-sm text-gray-500">시간</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="number"
+                    min={0}
+                    max={59}
+                    step={10}
+                    value={editTargetMinutes}
+                    onChange={(e) => setEditTargetMinutes(Math.min(59, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="w-[64px] h-[48px] px-3 bg-gray-50 border border-gray-200 rounded-xl text-[15px] text-gray-900 text-center outline-none focus:border-gray-400 transition-colors"
+                  />
+                  <span className="text-sm text-gray-500">분</span>
+                </div>
+              </div>
+            </div>
+            <div>
               <label className="block text-sm font-semibold text-gray-900 mb-3">카드 디자인</label>
               <DesignPresetPicker selectedId={editPreset} onSelect={setEditPreset} />
             </div>
@@ -243,20 +281,52 @@ function CardDetailContent() {
         ) : (
           <>
             {/* 카드 (실시간 시간이 카드 안에 표시됨) */}
-            <div className="mb-6">
-              <ProjectCard card={card} isFront />
+            <div className="mb-6 card-column">
+              <ProjectCard card={card} isFront todayMode={todayMode} />
+            </div>
+
+            {/* 오늘/전체 토글 (카드 열과 맞춤) */}
+            <div className="flex items-center justify-end gap-2 mb-4 card-column">
+              <button
+                onClick={toggleTodayMode}
+                className="pressable flex items-center gap-1.5 py-1.5 px-3 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div
+                  className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${
+                    todayMode ? "bg-indigo-500" : "bg-gray-300"
+                  }`}
+                >
+                  <div
+                    className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                      todayMode ? "translate-x-[16px]" : "translate-x-[2px]"
+                    }`}
+                  />
+                </div>
+                <span className={`text-xs transition-colors ${todayMode ? "text-indigo-500 font-medium" : "text-gray-400"}`}>
+                  오늘
+                </span>
+              </button>
             </div>
 
             {card.is_completed ? (
-              <div className="text-center py-4">
-                <p className="text-sm text-gray-400 mb-4">이 목표를 달성했습니다</p>
-                <button
-                  onClick={handleUncomplete}
-                  disabled={actionLoading}
-                  className="pressable text-sm text-gray-500 underline hover:text-gray-700 disabled:opacity-50"
-                >
-                  {actionLoading ? "처리 중..." : "되돌리기"}
-                </button>
+              <div className="py-4">
+                <p className="text-sm text-gray-400 mb-4 text-center">이 목표를 달성했습니다</p>
+                <div className="text-center mb-4">
+                  <button
+                    onClick={handleUncomplete}
+                    disabled={actionLoading}
+                    className="pressable text-sm text-gray-500 underline hover:text-gray-700 disabled:opacity-50"
+                  >
+                    {actionLoading ? "처리 중..." : "되돌리기"}
+                  </button>
+                </div>
+                <div className="border-t border-gray-100 pt-5">
+                  <TimeLogList
+                    cardId={card.id}
+                    mode="recent"
+                    refreshKey={refreshKey}
+                  />
+                </div>
               </div>
             ) : (
               <>

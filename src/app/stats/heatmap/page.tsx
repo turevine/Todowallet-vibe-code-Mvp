@@ -47,7 +47,7 @@ function HeatmapContent() {
       </header>
 
       {/* 히트맵 캘린더 */}
-      <main className="flex-1 px-5 pb-8">
+      <main className="flex-1 px-5 pb-8 md:max-w-4xl md:mx-auto md:w-full">
         <HeatmapCalendar cards={allCards} initialCardId={initialCardId} />
       </main>
     </motion.div>

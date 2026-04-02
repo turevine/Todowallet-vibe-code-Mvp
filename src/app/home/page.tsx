@@ -15,6 +15,7 @@ import { useCards } from "@/lib/hooks/useCards";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { usePageView } from "@/lib/hooks/usePageView";
 import { useToast } from "@/lib/hooks/useToast";
+import { useTodayMode } from "@/lib/hooks/useTodayMode";
 import { getPreset } from "@/constants/design-presets";
 import { formatDate } from "@/lib/utils/date";
 import type { ProjectCardWithStats } from "@/types";
@@ -211,7 +212,7 @@ function SettingsSheet({
 
           {/* 바텀시트 */}
           <motion.div
-            className="fixed bottom-0 left-1/2 w-full max-w-[430px] bg-white rounded-t-3xl z-50 pb-8 safe-area-bottom"
+            className="fixed bottom-0 left-1/2 w-full max-w-app-card bg-white rounded-t-3xl z-50 pb-8 safe-area-bottom"
             style={{ x: "-50%" }}
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -292,6 +293,7 @@ function HomeContent() {
   const searchParams = useSearchParams();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [cardOpening, setCardOpening] = useState(false);
+  const { todayMode, toggleTodayMode } = useTodayMode();
   const isNewCardEntry = searchParams.get("new") === "1";
 
   usePageView();
@@ -371,27 +373,49 @@ function HomeContent() {
           </div>
         ) : (
           <>
-            {/* 카드 관리 (배너 바로 아래) */}
-            <div className="flex justify-end mb-3">
-              <button
-                onClick={() => router.push("/cards/manage")}
-                className="pressable text-xs text-gray-400 hover:text-gray-600 transition-colors py-1 px-2"
-              >
-                카드관리
-              </button>
-            </div>
+            <div className="card-column">
+              {/* 오늘 토글 + 카드 관리 */}
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  onClick={toggleTodayMode}
+                  className="pressable flex items-center gap-1.5 py-1 px-2"
+                >
+                  <div
+                    className={`relative w-8 h-[18px] rounded-full transition-colors duration-200 ${
+                      todayMode ? "bg-indigo-500" : "bg-gray-300"
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                        todayMode ? "translate-x-[16px]" : "translate-x-[2px]"
+                      }`}
+                    />
+                  </div>
+                  <span className={`text-xs transition-colors ${todayMode ? "text-indigo-500 font-medium" : "text-gray-400"}`}>
+                    오늘
+                  </span>
+                </button>
+                <button
+                  onClick={() => router.push("/cards/manage")}
+                  className="pressable text-xs text-gray-400 hover:text-gray-600 transition-colors py-1 px-2"
+                >
+                  카드관리
+                </button>
+              </div>
 
-            {/* 카드 스택 */}
-            <CardStack
-              cards={activeCards}
-              newCardEntry={isNewCardEntry}
-              onCardOpenStart={() => setCardOpening(true)}
-              onDelete={softDeleteCard}
-              onComplete={completeCard}
-              onUpdateDesign={async (id, preset) => {
-                await updateCard(id, { design_preset: preset });
-              }}
-            />
+              {/* 카드 스택 */}
+              <CardStack
+                cards={activeCards}
+                newCardEntry={isNewCardEntry}
+                todayMode={todayMode}
+                onCardOpenStart={() => setCardOpening(true)}
+                onDelete={softDeleteCard}
+                onComplete={completeCard}
+                onUpdateDesign={async (id, preset) => {
+                  await updateCard(id, { design_preset: preset });
+                }}
+              />
+            </div>
           </>
         )}
 

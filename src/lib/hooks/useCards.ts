@@ -268,7 +268,7 @@ export function useCards() {
   }, [activeCards, liveNow, localLiveTimerSessions, remoteLiveTimerSessions]);
 
   const createCard = useCallback(
-    async (title: string, deadline: string | null, designPreset: string): Promise<boolean> => {
+    async (title: string, deadline: string | null, designPreset: string, targetSeconds?: number): Promise<boolean> => {
       const userId = await getUserId();
       if (!userId) return false;
 
@@ -291,6 +291,7 @@ export function useCards() {
         title,
         deadline,
         design_preset: designPreset,
+        target_seconds: targetSeconds ?? 3600,
         display_order: maxOrder + 1,
       });
 
@@ -306,7 +307,7 @@ export function useCards() {
   );
 
   const updateCard = useCallback(
-    async (id: string, updates: Partial<Pick<ProjectCard, "title" | "deadline" | "design_preset">>) => {
+    async (id: string, updates: Partial<Pick<ProjectCard, "title" | "deadline" | "design_preset" | "target_seconds">>) => {
       const supabase = createClient();
       const { error } = await supabase
         .from("project_cards")

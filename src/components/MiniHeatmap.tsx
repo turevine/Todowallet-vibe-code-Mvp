@@ -4,29 +4,28 @@ import { type KeyboardEvent, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getPreset } from "@/constants/design-presets";
 import { getMonthRange } from "@/lib/utils/date";
+import { getHeatmapOpacity, formatDurationKorean } from "@/lib/utils/format";
 import { getDaysInMonth } from "date-fns";
 import type { HeatmapDay } from "@/types";
+
+const DEFAULT_TARGET = 3600;
 
 interface MiniHeatmapProps {
   cardId: string;
   designPreset: string;
+  targetSeconds?: number;
   currentMonth: { year: number; month: number };
   onMonthChange: (direction: "prev" | "next") => void;
-}
-
-function getOpacity(seconds: number): number {
-  if (seconds === 0) return 0.2;
-  if (seconds <= 3600) return 0.4;
-  if (seconds <= 10800) return 0.7;
-  return 1.0;
 }
 
 export default function MiniHeatmap({
   cardId,
   designPreset,
+  targetSeconds,
   currentMonth,
   onMonthChange,
 }: MiniHeatmapProps) {
+  const target = targetSeconds ?? DEFAULT_TARGET;
   const [days, setDays] = useState<HeatmapDay[]>([]);
   const preset = getPreset(designPreset);
 
@@ -114,12 +113,37 @@ export default function MiniHeatmap({
                 style={{
                   backgroundColor:
                     day.totalSeconds > 0 ? preset.accentColor : preset.textColor,
-                  opacity: getOpacity(day.totalSeconds),
+                  opacity: day.totalSeconds === 0 ? 0.2 : getHeatmapOpacity(day.totalSeconds, target),
                 }}
               />
             ))}
           </div>
         ))}
+      </div>
+
+      {/* 목표 시간 + 일 평균 */}
+      <div className="mt-2 flex items-center gap-2">
+        <span
+          className="text-[10px] opacity-50"
+          style={{ color: preset.textColor }}
+        >
+          목표 {formatDurationKorean(target)}/일
+        </span>
+        {(() => {
+          const activeDays = days.filter((d) => d.totalSeconds > 0);
+          if (activeDays.length === 0) return null;
+          const avg = Math.round(
+            activeDays.reduce((s, d) => s + d.totalSeconds, 0) / activeDays.length,
+          );
+          return (
+            <span
+              className="text-[10px] opacity-40"
+              style={{ color: preset.textColor }}
+            >
+              평균 {formatDurationKorean(avg)}/일
+            </span>
+          );
+        })()}
       </div>
     </div>
   );

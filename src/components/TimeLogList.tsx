@@ -24,6 +24,22 @@ function formatLogDate(dateStr: string): string {
   return format(date, "M/d");
 }
 
+function formatTimeRange(startedAt: string, endedAt: string): string {
+  const start = new Date(startedAt);
+  const end = new Date(endedAt);
+  const fmt = (d: Date) =>
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return `${fmt(start)} ~ ${fmt(end)}`;
+}
+
+function formatSessionDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h === 0) return `${m}분`;
+  if (m === 0) return `${h}시간`;
+  return `${h}시간 ${m}분`;
+}
+
 export default function TimeLogList({ cardId, mode, refreshKey }: TimeLogListProps) {
   const router = useRouter();
   const { recentLogs, allLogs, loading, fetchRecentLogs, fetchAllLogs } = useTimeLogs();
@@ -76,16 +92,31 @@ export default function TimeLogList({ cardId, mode, refreshKey }: TimeLogListPro
       {/* 목록 */}
       <div className="space-y-1">
         {logs.map((log) => (
-          <div
-            key={log.date}
-            className="flex items-center justify-between py-2.5 px-1"
-          >
-            <span className="text-sm text-gray-600">
-              {formatLogDate(log.date)}
-            </span>
-            <span className="text-sm font-medium text-gray-900">
-              {formatShortTime(log.totalSeconds)}
-            </span>
+          <div key={log.date} className="py-2.5 px-1">
+            {/* 날짜 + 총 시간 */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">
+                {formatLogDate(log.date)}
+              </span>
+              <span className="text-sm font-medium text-gray-900">
+                {formatShortTime(log.totalSeconds)}
+              </span>
+            </div>
+            {/* 개별 세션 시간대 */}
+            {log.sessions.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                {log.sessions.map((session, i) => (
+                  <div key={i} className="flex items-center justify-between pl-2">
+                    <span className="text-[11px] text-gray-400">
+                      {formatTimeRange(session.startedAt, session.endedAt)}
+                    </span>
+                    <span className="text-[11px] text-gray-400">
+                      {formatSessionDuration(session.durationSeconds)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>
