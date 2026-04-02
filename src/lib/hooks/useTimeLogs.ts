@@ -47,7 +47,7 @@ export function useTimeLogs() {
         .map(([date, { totalSeconds, sessions }]) => ({
           date,
           totalSeconds,
-          sessions: sessions.sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
+          sessions: sessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt)),
         }))
         .sort((a, b) => b.date.localeCompare(a.date))
         .slice(0, limit);
@@ -82,7 +82,7 @@ export function useTimeLogs() {
         .map(([date, { totalSeconds, sessions }]) => ({
           date,
           totalSeconds,
-          sessions: sessions.sort((a, b) => b.startedAt.localeCompare(a.startedAt)),
+          sessions: sessions.sort((a, b) => a.startedAt.localeCompare(b.startedAt)),
         }))
         .sort((a, b) => b.date.localeCompare(a.date));
       setAllLogs(logs);
